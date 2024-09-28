@@ -1,14 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { EventModel, CommandModel } from '../cqrs.js';
+import { eventStorage } from '../handlers/event-store.js';
 
 @Injectable()
 export class StateService {
-    private events: EventModel[] = []; // Simulación de almacenamiento de eventos
+
+    // Obtener eventos de la base de datos
+    // Si no se proporciona `minVersion`, usar un valor mínimo para no filtrar eventos antiguoss
+    getEventsByReservationKey = async ({ payload: { reservationId } }: { payload: { reservationId: string } }, minVersion?: number) => await eventStorage.getEvents(reservationId, minVersion ?? 0);
 
     // Obtener estado actual del sistema basado en eventos previos
-    async getCurrentState() {
-        return this.events.reduce((state, event) => this.applyEventToState(state, event), {});
-    }
+    projectState = (initialState: {}) => (events: EventModel[] = []) => events.reduce((state, event) => this.applyEventToState(state, event), initialState);
+
+    projectDecisionState = (state: {}) => (event: EventModel) => this.applyEventToState(state, event);
 
     // Función pura que decide el próximo evento en base al comando y el estado actual
     decide(command: CommandModel, currentState: any): EventModel[] {
@@ -61,11 +65,6 @@ export class StateService {
         }
     }
 
-    // Aplicar evento a la lista de eventos (simulación de persistencia)
-    async applyEvent(event: EventModel) {
-        this.events.push(event);
-    }
-
     // === FUNCIONES DE VALIDACIÓN Y NEGOCIO ===
 
     // Verificar si el tipo de habitación está disponible para crear la reserva
@@ -81,6 +80,7 @@ export class StateService {
                         res.roomId === roomId &&
                         res.status !== 'CANCELLED' && // Verifica que la reserva no esté cancelada
                         (
+                            // Verificar si hay superposición de fechas
                             (new Date(res.checkInDate) <= new Date(checkOutDate) && new Date(res.checkOutDate) >= new Date(checkInDate)) // Verifica si hay superposición de fechas
                         )
                 )

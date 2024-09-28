@@ -11,9 +11,10 @@ export class CommandHandlerController {
         const validation = validateCommand(command);
         if (!validation.isValid) throw new BadRequestException(validation.errors);
 
-        const currentState = await this.stateService.getCurrentState();
-        const events = this.stateService.decide(command, currentState);
-        await Promise.all(events.map(this.stateService.applyEvent));
+        const events = await this.stateService.getEventsByReservationKey(command)
+        const currentState = this.stateService.projectState({})(events)
+        const newEvents = this.stateService.decide(command, currentState)
+        await Promise.all(newEvents.map(this.stateService.projectDecisionState(currentState)))
 
         return { success: true, events };
     }
