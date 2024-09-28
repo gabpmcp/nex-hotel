@@ -1,8 +1,13 @@
 import Joi from 'joi';
 
+// Expresión regular para UUIDv7
+const uuidv7Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 const payloadSchema = {
     CreateReservation: Joi.object({
-        reservationId: Joi.string().required(),
+        reservationId: Joi.string().required().pattern(uuidv7Regex).messages({
+            'string.pattern.base': 'ID must be a valid UUIDv7'
+        }),
         userId: Joi.string().required(),
         roomType: Joi.string().valid('Junior Suite', 'King Suite', 'Presidential Suite').required(),
         checkInDate: Joi.date().required(),

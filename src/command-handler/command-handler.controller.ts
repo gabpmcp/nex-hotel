@@ -1,4 +1,4 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, BadRequestException, ConflictException } from '@nestjs/common';
 import { StateService } from '../state/state.service.js';
 import { validateCommand } from './schema.js';
 
@@ -13,8 +13,14 @@ export class CommandHandlerController {
 
         const events = await this.stateService.getEventsByReservationKey(command)
         const currentState = this.stateService.projectState({})(events)
-        const newEvents = this.stateService.decide(command, currentState)
-        await Promise.all(newEvents.map(this.stateService.projectDecisionState(currentState)))
+        const result = this.stateService.decide(command, currentState)
+
+        if (result.success) {
+            await Promise.all(result.data.map(this.stateService.projectDecisionState(currentState)))
+        } else {
+            throw new ConflictException({ success: false, command, error: result.error })
+        }
+
 
         return { success: true, events };
     }

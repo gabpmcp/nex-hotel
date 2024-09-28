@@ -2,6 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { EventModel, CommandModel } from '../cqrs.js';
 import { eventStorage } from '../handlers/event-store.js';
 
+// Definición de modelos de retorno para éxito y error
+type DecisionResult = {
+    success: boolean;
+    data: EventModel[] | [];
+    error?: string;
+};
+
 @Injectable()
 export class StateService {
 
@@ -15,55 +22,60 @@ export class StateService {
     projectDecisionState = (state: {}) => (event: EventModel) => this.applyEventToState(state, event);
 
     // Función pura que decide el próximo evento en base al comando y el estado actual
-    decide(command: CommandModel, currentState: any): EventModel[] {
-        switch (command.type) {
-            case 'CreateReservation':
-                if (this.isRoomTypeAvailable(currentState, command.payload)) {
-                    return [{ type: 'ReservationCreated', payload: command.payload }];
-                }
-                throw new Error('Room not available for this type');
+    decide = (command: CommandModel, currentState: any): DecisionResult =>
+    ({
+        'CreateReservation': () =>
+            this.isRoomTypeAvailable(currentState, command.payload)
+                ? { success: true, data: [{ type: 'ReservationCreated', payload: command.payload }] }
+                : { success: false, data: [], error: 'Room not available for this type' },
 
-            case 'CancelReservation':
-                return this.isCancelable(currentState, command.payload)
-                    ? [{ type: 'ReservationCancelled', payload: command.payload }]
-                    : [];
+        'CancelReservation': () =>
+            this.isCancelable(currentState, command.payload)
+                ? { success: true, data: [{ type: 'ReservationCancelled', payload: command.payload }] }
+                : { success: false, data: [], error: 'Reservation cannot be cancelled' },
 
-            case 'UpdateReservationDates':
-                return this.isUpdateAllowed(currentState, command.payload)
-                    ? [
+        'UpdateReservationDates': () =>
+            this.isUpdateAllowed(currentState, command.payload)
+                ? {
+                    success: true,
+                    data: [
                         { type: 'ReservationDatesUpdated', payload: command.payload },
-                        { type: 'PriceRecalculated', payload: { ...command.payload, newPrice: 100 } }, // Lógica de precio
+                        { type: 'PriceRecalculated', payload: { ...command.payload, newPrice: 100 } }
                     ]
-                    : [];
+                }
+                : { success: false, data: [], error: 'Update not allowed for the reservation dates' },
 
-            case 'AdjustPriceForReservation':
-                return [
-                    { type: 'PriceAdjusted', payload: { ...command.payload, reason: 'Manual adjustment' } },
-                ];
+        'AdjustPriceForReservation': () => ({
+            success: true,
+            data: [{ type: 'PriceAdjusted', payload: { ...command.payload, reason: 'Manual adjustment' } }]
+        }),
 
-            case 'CheckInReservation':
-                return this.isCheckInAllowed(currentState, command.payload)
-                    ? [{ type: 'ReservationCheckedIn', payload: command.payload }]
-                    : [];
+        'CheckInReservation': () =>
+            this.isCheckInAllowed(currentState, command.payload)
+                ? { success: true, data: [{ type: 'ReservationCheckedIn', payload: command.payload }] }
+                : { success: false, data: [], error: 'Check-in not allowed for this reservation' },
 
-            case 'CheckOutReservation':
-                return this.isCheckOutAllowed(currentState, command.payload)
-                    ? [
+        'CheckOutReservation': () =>
+            this.isCheckOutAllowed(currentState, command.payload)
+                ? {
+                    success: true,
+                    data: [
                         { type: 'ReservationCheckedOut', payload: command.payload },
-                        { type: 'RoomReleased', payload: { roomId: command.payload.roomId, reservationId: command.payload.reservationId } },
+                        { type: 'RoomReleased', payload: { roomId: command.payload.roomId, reservationId: command.payload.reservationId } }
                     ]
-                    : [];
+                }
+                : { success: false, data: [], error: 'Check-out not allowed for this reservation' },
 
-            case 'BlockRoomForMaintenance':
-                return [{ type: 'RoomBlocked', payload: command.payload }];
+        'BlockRoomForMaintenance': () => ({
+            success: true,
+            data: [{ type: 'RoomBlocked', payload: command.payload }]
+        }),
 
-            case 'ReleaseRoomFromMaintenance':
-                return [{ type: 'RoomReleased', payload: command.payload }];
-
-            default:
-                throw new Error('Invalid command type');
-        }
-    }
+        'ReleaseRoomFromMaintenance': () => ({
+            success: true,
+            data: [{ type: 'RoomReleased', payload: command.payload }]
+        })
+    }[command.type]?.() ?? { success: false, data: [], error: 'Invalid command type' });
 
     // === FUNCIONES DE VALIDACIÓN Y NEGOCIO ===
 
