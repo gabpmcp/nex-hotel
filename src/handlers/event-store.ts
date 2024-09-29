@@ -85,6 +85,15 @@ const useEventStorage = (environment: string) => {
     }
 };
 
+// Monitoreo del estado del pool cada 10 segundos
+setInterval(() => {
+    console.log('Knex Pool Status:', {
+        free: db.client.pool.numFree(),
+        pending: db.client.pool.numPendingAcquires(),
+        used: db.client.pool.numUsed()
+    });
+}, 10000); // Cada 10 segundos
+
 // Selección del almacenamiento según el entorno
 const eventStorage = useEventStorage(getEnvironment());
 

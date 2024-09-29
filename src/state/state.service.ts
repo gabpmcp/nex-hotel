@@ -24,10 +24,28 @@ export class StateService {
     // Función pura que decide el próximo evento en base al comando y el estado actual
     decide = (command: CommandModel, currentState: any): DecisionResult =>
     ({
-        'CreateReservation': () =>
+        'CreateReservation': () => {
+            const { rooms, reservations } = currentState || {};
+            const { roomType, roomId, checkInDate, checkOutDate } = command.payload;
+
+            // Genera un evento de creación de habitación si no hay información previa de rooms
+            const roomCreated = (!rooms || !rooms.length)
+                ? [{ type: 'RoomCreated', payload: { roomId, roomType, status: 'Available', createdBy: 'system' } }]
+                : [];
+
+            console.log('Created room', roomCreated);
+            // Verificar si el tipo de habitación está disponible para crear la reserva
             this.isRoomTypeAvailable(currentState, command.payload)
-                ? { success: true, data: [{ type: 'ReservationCreated', payload: command.payload }] }
-                : { success: false, data: [], error: 'Room not available for this type' },
+                ? { success: true, data: [{ ...roomCreated, type: 'ReservationCreated', payload: command.payload }] }
+                : {
+                    // Enriquecer el error con el estado actual
+                    success: false, data: [], error: {
+                        currentState: { rooms, reservations },
+                        inputs: { roomType, checkInDate, checkOutDate },
+                        message: 'Room not available for this type'
+                    }
+                }
+        },
 
         'CancelReservation': () =>
             this.isCancelable(currentState, command.payload)
