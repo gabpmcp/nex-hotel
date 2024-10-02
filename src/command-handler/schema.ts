@@ -34,12 +34,19 @@ const payloadSchema = {
 };
 
 export const commandSchema = Joi.object({
+    businessId: Joi.string().required(),
     type: Joi.string().valid(...Object.keys(payloadSchema)).required(),
     payload: Joi.object().required(),
 });
 
 export function validateCommand(command: any) {
+    // Validamos el esquema del comando completo (type y payload)
+    const { error: commandError } = commandSchema.validate(command);
+    if (commandError) return { isValid: false, errors: commandError.details };
+
+    // Validamos el payload según el tipo
     const schema = payloadSchema[command.type];
-    const { error } = schema ? schema.validate(command.payload) : { error: 'Invalid Command Type' };
-    return error ? { isValid: false, errors: error.details || error } : { isValid: true, errors: [] };
+    const { error: payloadError } = schema?.validate(command.payload) || { error: 'Invalid Command Type' };
+
+    return payloadError ? { isValid: false, errors: payloadError.details || payloadError } : { isValid: true, errors: [] };
 }

@@ -14,7 +14,21 @@ export class StateService {
 
     // Obtener eventos de la base de datos
     // Si no se proporciona `minVersion`, usar un valor mínimo para no filtrar eventos antiguoss
-    getEventsByReservationKey = async ({ payload: { reservationId } }: { payload: { reservationId: string } }, minVersion?: number) => await eventStorage.getEvents(reservationId, minVersion ?? 0);
+    getEventsByReservationKey = async ({ businessId, minVersion }: { businessId: string, minVersion?: number }) => await eventStorage.getEvents(businessId, minVersion ?? 0);
+
+    saveEvents = async ({ businessId, newEvents, metadata }: { businessId: string, newEvents: EventModel[], metadata: any }) =>
+        await eventStorage.save(
+            await Promise.all(
+                newEvents.map(async (event, index) => ({
+                    aggregate_id: businessId,
+                    event_type: event.type,
+                    event_data: event.payload,
+                    metadata,
+                    version: (await eventStorage.findLastEvent(businessId)) || 0 + index + 1,
+                    processed: false
+                }))
+            )
+        );
 
     // Obtener estado actual del sistema basado en eventos previos
     projectState = (initialState: {}) => (events: EventModel[] = []) => events.reduce((state, event) => this.applyEventToState(state, event), initialState);
@@ -26,17 +40,20 @@ export class StateService {
     ({
         'CreateReservation': () => {
             const { rooms, reservations } = currentState || {};
-            const { roomType, roomId, checkInDate, checkOutDate } = command.payload;
+            const { roomType, checkInDate, checkOutDate } = command.payload;
 
             // Genera un evento de creación de habitación si no hay información previa de rooms
             const roomCreated = (!rooms || !rooms.length)
-                ? [{ type: 'RoomCreated', payload: { roomId, roomType, status: 'Available', createdBy: 'system' } }]
-                : [];
+                ?
+                [
+                    { type: 'RoomCreated', payload: { roomType, status: 'Available', createdBy: 'system' } },
+                    { type: 'ReservationCreated', payload: command.payload }
+                ]
+                : []
 
-            console.log('Created room', roomCreated);
             // Verificar si el tipo de habitación está disponible para crear la reserva
-            this.isRoomTypeAvailable(currentState, command.payload)
-                ? { success: true, data: [{ ...roomCreated, type: 'ReservationCreated', payload: command.payload }] }
+            return roomCreated || this.isRoomTypeAvailable(currentState, command.payload)
+                ? { success: true, data: roomCreated || { type: 'ReservationCreated', payload: command.payload } }
                 : {
                     // Enriquecer el error con el estado actual
                     success: false, data: [], error: {

@@ -1,9 +1,11 @@
+import { PrismaClient } from '@prisma/client';
 import { getEnvironment } from '../../config.js'; // Importa la función desde config.ts
-import knex from 'knex';
-import knexConfig from '../../knexfile.js'; // Importa la configuración de knexfile
+import { skip } from 'node:test';
 
-//Aquí se garantiza que solo hay una instancia única y reutilizable de Knex aprovechando la caché del sistema de modulos de NodeJS usando la configuración de knexfile.js
-const db = knex(knexConfig);
+// Instanciar Prisma Client
+const prisma = new PrismaClient({
+    log: ['query', 'info', 'warn', 'error'], // Puedes ajustar los niveles de logs si es necesario
+});
 
 /**
  * Crea un objeto para interactuar con un almacén de eventos.
@@ -15,68 +17,66 @@ const db = knex(knexConfig);
  * @param getEvents Función que se llama para obtener todos los eventos.
  * @returns Un objeto con los métodos mencionados.
  */
-const eventStore = (saveEvent: (arg0: any) => any, getEvents: (aggregateId: string, minVersion: number) => any) => ({
-    save: async (event: any) => await saveEvent(event),
-    getEvents: async (aggregateId: string, minVersion: number) => await getEvents(aggregateId, minVersion),
+const eventStore = (saveEvent: (arg0: any) => any, getEvents: (aggregateId: string, minVersion: number) => any, findLastVersionByAggregateId: (aggregateId: string) => any) => ({
+    save: (event: any) => saveEvent(event),
+    getEvents: (aggregateId: string, minVersion: number) => getEvents(aggregateId, minVersion),
+    findLastEvent: async (aggregateId: string) => findLastVersionByAggregateId(aggregateId).version
 });
 
 // Implementación de almacenamiento en memoria
 const inMemoryStore = () => {
-    let events = [];
+    let events: Event[] = [];
     return eventStore(
         (event) => {
             events.push(event);
             return Promise.resolve();
+
         },
-        () => Promise.resolve(events)
+        () => Promise.resolve(events),
+        () => Promise.resolve(events.length)
     );
 };
 
-// Uso en memoria
-/*const memoryStorage = inMemoryStore();
-memoryStorage.save({ id: 1, type: 'EVENT_TYPE', data: 'EventData' });
-memoryStorage.getAll().then(console.log); // [{ id: 1, type: 'EVENT_TYPE', data: 'EventData' }]*/
-
-
-// Implementación de almacenamiento en Postgres
-// Función para interactuar con el store de eventos usando Knex
+// Implementación de almacenamiento en Postgres con Prisma
 const postgresStore = () => {
     // Función para guardar un evento en la base de datos
-    const saveEventToDB = async (event: {
-        aggregateId: string;
-        eventType: string;
-        eventData: any;
-        metadata?: any;
-        version?: number;
-        processed?: boolean;
-    }) => {
-        db('events').insert({
-            aggregate_id: event.aggregateId,
-            event_type: event.eventType,
-            event_data: event.eventData,
-            metadata: event.metadata || {},
-            version: event.version || 1,
-            processed: event.processed || false,
-        });
-    };
+    const saveEventsToDB = async (events: {
+        aggregate_id: string
+        event_type: string
+        event_data: any
+        metadata: any
+        version: number
+        processed: boolean
+    }[]) => await prisma.events.createMany({
+        data: events
+    });
 
     // Función para obtener eventos de la base de datos por llave de negocio
     const getEventsFromDB = async (aggregateId: string, minVersion: number = 0) =>
-        db('events')
-            .where('aggregate_id', aggregateId)
-            .andWhere('version', '>', minVersion)
-            .select('*');
+        await prisma.events.findMany({
+            where: {
+                aggregate_id: aggregateId,
+                version: {
+                    gt: minVersion,
+                },
+            },
+        });
+
+    const findLastVersionByAggregateId = async (aggregateId: string) =>
+        await prisma.events.findFirst({
+            where: {
+                aggregate_id: aggregateId,
+            },
+            orderBy: {
+                version: 'desc', // Ordena por versión en orden descendente
+            }
+        });
 
     // Devuelve el store con las funciones de interacción con la base de datos
-    return eventStore(saveEventToDB, getEventsFromDB);
+    return eventStore(saveEventsToDB, getEventsFromDB, findLastVersionByAggregateId);
 };
 
 // Uso con Postgres
-/*const connectionString = 'postgresql://user:password@localhost:5432/mydb';
-const postgresStorage = postgresStore(connectionString);
-postgresStorage.save({ id: 2, type: 'EVENT_TYPE', data: 'EventData' });
-postgresStorage.getAll().then(console.log); // [{ id: 2, type: 'EVENT_TYPE', data: 'EventData' }]*/
-
 const useEventStorage = (environment: string) => {
     if (environment === 'production') {
         return postgresStore();
@@ -85,16 +85,7 @@ const useEventStorage = (environment: string) => {
     }
 };
 
-// Monitoreo del estado del pool cada 10 segundos
-setInterval(() => {
-    console.log('Knex Pool Status:', {
-        free: db.client.pool.numFree(),
-        pending: db.client.pool.numPendingAcquires(),
-        used: db.client.pool.numUsed()
-    });
-}, 10000); // Cada 10 segundos
-
 // Selección del almacenamiento según el entorno
 const eventStorage = useEventStorage(getEnvironment());
 
-export { eventStorage }
+export { eventStorage };

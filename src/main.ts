@@ -4,7 +4,7 @@ import { getAppPort } from '../config.js'; // Importa la función desde config.t
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  await app.listen(getAppPort());
+  await app.listen(getAppPort() || 3001);
   console.log(`Application is running on: ${await app.getUrl()}`);
 }
 bootstrap();

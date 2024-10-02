@@ -66,3 +66,7 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+`docker run --name postgres-nexhotel -e POSTGRES_USER=nexadmin -e POSTGRES_PASSWORD=1234567 -e POSTGRES_DB=nexhotel -p 5432:5432 -d postgres`
+`npm run start:dev`
+`npx knex migrate:latest`
