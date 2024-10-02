@@ -70,3 +70,21 @@ Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 `docker run --name postgres-nexhotel -e POSTGRES_USER=nexadmin -e POSTGRES_PASSWORD=1234567 -e POSTGRES_DB=nexhotel -p 5432:5432 -d postgres`
 `npm run start:dev`
 `npx knex migrate:latest`
+`docker run -d --name camunda -p 8080:8080 camunda/camunda-bpm-platform:latest`
+`curl -X POST \
+  http://localhost:8080/engine-rest/deployment/create \
+  -F "deployment-name=DynamicRoomPricing" \
+  -F "enable-duplicate-filtering=true" \
+  -F "DynamicRoomPricing.dmn=@rules/DynamicRoomPricing.dmn"`
+`GET http://localhost:8080/engine-rest/decision-definition`
+`POST http://localhost:8080/engine-rest/decision-definition/key/Decision_056hkp1/evaluate
+Content-Type: application/json
+
+{
+  "variables": {
+    "RoomType": { "value": "Junior Suite", "type": "String" },
+    "Days": { "value": 5, "type": "Integer" },
+    "IsWeekend": { "value": false, "type": "Boolean" },
+    "Availability": { "value": 85, "type": "Integer" }
+  }
+}`

@@ -48,7 +48,7 @@ const postgresStore = () => {
         version: number
         processed: boolean
     }[]) => await prisma.events.createMany({
-        data: events
+        data: events, skipDuplicates: true
     });
 
     // Función para obtener eventos de la base de datos por llave de negocio

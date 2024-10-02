@@ -43,17 +43,17 @@ export class StateService {
             const { roomType, checkInDate, checkOutDate } = command.payload;
 
             // Genera un evento de creación de habitación si no hay información previa de rooms
-            const roomCreated = (!rooms || !rooms.length)
+            const roomAllocated = (!rooms || !rooms.length)
                 ?
                 [
-                    { type: 'RoomCreated', payload: { roomType, status: 'Available', createdBy: 'system' } },
+                    { type: 'RoomAllocated', payload: { roomType, status: 'Available', createdBy: 'system' } },
                     { type: 'ReservationCreated', payload: command.payload }
                 ]
                 : []
 
             // Verificar si el tipo de habitación está disponible para crear la reserva
-            return roomCreated || this.isRoomTypeAvailable(currentState, command.payload)
-                ? { success: true, data: roomCreated || { type: 'ReservationCreated', payload: command.payload } }
+            return roomAllocated || this.isRoomTypeAvailable(currentState, command.payload)
+                ? { success: true, data: roomAllocated || { type: 'ReservationCreated', payload: command.payload } }
                 : {
                     // Enriquecer el error con el estado actual
                     success: false, data: [], error: {
@@ -168,53 +168,64 @@ export class StateService {
     isCheckOutAllowed = (state: any, { reservationId }: any) => state.reservations?.find(({ id, status }) => id === reservationId && status === 'CHECKED_IN');
 
     // Aplicar el evento al estado para calcular el estado actual
-    applyEventToState(state: any, event: EventModel) {
-        switch (event.type) {
-            case 'ReservationCreated':
-                return {
-                    ...state,
-                    reservations: [
-                        ...(state.reservations || []),
-                        { ...event.payload, status: 'PENDING' },
-                    ],
-                };
-            case 'ReservationCancelled':
-                return {
-                    ...state,
-                    reservations: state.reservations.map((res: any) =>
-                        res.id === event.payload.reservationId ? { ...res, status: 'CANCELLED' } : res,
-                    ),
-                };
-            case 'ReservationCheckedIn':
-                return {
-                    ...state,
-                    reservations: state.reservations.map((res: any) =>
-                        res.id === event.payload.reservationId ? { ...res, status: 'CHECKED_IN' } : res,
-                    ),
-                };
-            case 'ReservationCheckedOut':
-                return {
-                    ...state,
-                    reservations: state.reservations.map((res: any) =>
-                        res.id === event.payload.reservationId ? { ...res, status: 'COMPLETED' } : res,
-                    ),
-                };
-            case 'RoomReleased':
-                return {
-                    ...state,
-                    rooms: state.rooms.map((room: any) =>
-                        room.id === event.payload.roomId ? { ...room, isAvailable: true } : room,
-                    ),
-                };
-            case 'RoomBlocked':
-                return {
-                    ...state,
-                    rooms: state.rooms.map((room: any) =>
-                        room.id === event.payload.roomId ? { ...room, isAvailable: false } : room,
-                    ),
-                };
-            default:
-                return state;
-        }
-    }
+    applyEventToState = (state: any, { type, payload }: EventModel) => ({
+        'ReservationCreated': () => ({
+            ...state,
+            reservations: [
+                ...(state.reservations || []),
+                {
+                    id: payload.reservationId,
+                    roomType: payload.roomType,
+                    status: 'PENDING',
+                    checkInDate: payload.checkInDate,
+                    checkOutDate: payload.checkOutDate
+                }
+            ],
+        }),
+        'ReservationCancelled': () => ({
+            ...state,
+            reservations: state.reservations.map((res: { id: any; }) => res.id === payload.reservationId
+                ? { ...res, status: 'CANCELLED' }
+                : res),
+        }),
+        'ReservationCheckedIn': () => ({
+            ...state,
+            reservations: state.reservations.map((res: { id: any; }) => res.id === payload.reservationId
+                ? { ...res, status: 'CHECKED_IN', checkInDate: payload.checkInDate }
+                : res),
+        }),
+        'ReservationCheckedOut': () => ({
+            ...state,
+            reservations: state.reservations.map((res: { id: any; }) => res.id === payload.reservationId
+                ? { ...res, status: 'COMPLETED' }
+                : res),
+            rooms: state.rooms.map((room: { id: any; }) => room.id === payload.roomId
+                ? { ...room, isAvailable: true }
+                : room),
+        }),
+        'RoomReleased': () => ({
+            ...state,
+            rooms: state.rooms.map((room: { id: any; }) => room.id === payload.roomId
+                ? { ...room, isAvailable: true }
+                : room),
+        }),
+        'RoomBlocked': () => ({
+            ...state,
+            rooms: state.rooms.map((room: { id: any; }) => room.id === payload.roomId
+                ? { ...room, isAvailable: false }
+                : room),
+        }),
+        'PriceCalculated': () => ({
+            ...state,
+            reservations: state.reservations.map((res: { id: any; }) => res.id === payload.reservationId
+                ? { ...res, price: payload.newPrice }
+                : res),
+        }),
+        'PriceAdjusted': () => ({
+            ...state,
+            reservations: state.reservations.map((res: { id: any; }) => res.id === payload.reservationId
+                ? { ...res, price: payload.adjustedPrice }
+                : res),
+        }),
+    }[type === 'PriceCalculated' || type === 'PriceRecalculated' ? 'PriceCalculated' : type]?.() || state);
 }

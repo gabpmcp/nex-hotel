@@ -28,6 +28,7 @@
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
     "@prisma/client": "^5.20.0",
+    "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "joi": "^17.13.3",
     "knex": "^3.1.0",

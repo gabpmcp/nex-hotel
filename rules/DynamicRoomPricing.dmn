@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+id="Definitions_0t1sjvo" name="DRD" namespace="http://camunda.org/schema/1.0/dmn" exporter="Camunda Modeler" exporterVersion="5.27.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.5.0">
+  <decision id="Decision_056hkp1" name="Decision 1" camunda:historyTimeToLive="180">
+    <decisionTable id="DecisionTable_1tmjzbq">
+      <input id="Input_1">
+        <inputExpression id="InputExpression_1" typeRef="string">
+          <text>RoomType</text>
+        </inputExpression>
+      </input>
+      <input id="InputClause_0scno9k" label="Days">
+        <inputExpression id="LiteralExpression_01lwrc6" typeRef="number">
+          <text></text>
+        </inputExpression>
+      </input>
+      <input id="InputClause_1ihccpx" label="IsWeekend">
+        <inputExpression id="LiteralExpression_1iipgjg" typeRef="boolean">
+          <text></text>
+        </inputExpression>
+      </input>
+      <input id="InputClause_0twl82s" label="Availability">
+        <inputExpression id="LiteralExpression_0z4u2vr" typeRef="number">
+          <text></text>
+        </inputExpression>
+      </input>
+      <output id="Output_1" label="FinalPrice" typeRef="string" />
+      <rule id="DecisionRule_0ukjrnd">
+        <inputEntry id="UnaryTests_19572oz">
+          <text>"Junior Suite"</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_1bg07kb">
+          <text>0..3</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_1yoa0um">
+          <text>false</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_1qxbgcc">
+          <text>80..100</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_1k5naor">
+          <text>60</text>
+        </outputEntry>
+      </rule>
+      <rule id="DecisionRule_1lzeix6">
+        <inputEntry id="UnaryTests_0jwf6hf">
+          <text>"King Suite"</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_1lol26b">
+          <text>4..6</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_11hxe13">
+          <text>true</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_1s8a47x">
+          <text>60..79</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_1qzc6j4">
+          <text>90 + (90 * 0.25) - 4</text>
+        </outputEntry>
+      </rule>
+      <rule id="DecisionRule_0m1exwp">
+        <inputEntry id="UnaryTests_13mikv2">
+          <text>"Presidential Suite"</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_045ynar">
+          <text>7..9</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_0maqws7">
+          <text>true</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_0gq48un">
+          <text>20..39</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_0cwp6pd">
+          <text>150 + (150 * 0.25) - 8 + (150 * 0.10)</text>
+        </outputEntry>
+      </rule>
+      <rule id="DecisionRule_068w8gx">
+        <inputEntry id="UnaryTests_0c2z7h8">
+          <text>"Junior Suite"</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_1mxyss4">
+          <text>10+</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_0gopjvl">
+          <text>false</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_1y06qk7">
+          <text>0..19</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_1jsxgab">
+          <text>60 - 12 + (60 * 0.15)</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram>
+      <dmndi:DMNShape dmnElementRef="Decision_056hkp1">
+        <dc:Bounds height="80" width="180" x="160" y="100" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

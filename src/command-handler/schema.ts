@@ -31,6 +31,12 @@ const payloadSchema = {
         maintenanceReason: Joi.string().required(),
     }),
     ReleaseRoomFromMaintenance: Joi.object({ roomId: Joi.string().required() }),
+    NotifyPrice: Joi.object({
+        reservationId: Joi.string().required().pattern(uuidv7Regex).messages({
+            'string.pattern.base': 'ID must be a valid UUIDv7'
+        }),
+        calculatedPrice: Joi.number().greater(0).required(),
+    }),
 };
 
 export const commandSchema = Joi.object({
