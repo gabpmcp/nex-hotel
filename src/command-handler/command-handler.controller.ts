@@ -21,19 +21,19 @@ export class CommandHandlerController {
         if (result.success) {
             await Promise.all(result.data.map(this.stateService.projectDecisionState(currentState)))
             await this.stateService.saveEvents({ businessId: command.businessId, newEvents: result.data, metadata: { ...metadata, finishedAt: `${new Date(Date.now()).toLocaleTimeString('en-GB', { hour12: false })}.${new Date(Date.now()).getMilliseconds()}` } })
-            console.log(this.notifyReservationPrice())
+            // this.notifyReservationPrice()
             // Si se generó el evento ReservationCreated, se activa el dispatcher de notificación
-            /*const reservationCreatedEvent = result.data.find(event => event.type === 'ReservationCreated')
+            const reservationCreatedEvent = result.data.find(event => event.type === 'ReservationCreated')
             if (reservationCreatedEvent) {
                 const { roomType, checkInDate, checkOutDate, reservationId } = reservationCreatedEvent.payload || {};
                 if (roomType && checkInDate && checkOutDate && reservationId) {
                     // TODO: Notificar el precio de la reserva
-                    // await this.notifyReservationPrice({
-                    //     payload: { roomType, checkInDate, checkOutDate, reservationId },
-                    //     businessId: command.businessId
-                    // });
+                    await this.notifyReservationPrice({
+                        payload: { roomType, checkInDate, checkOutDate, reservationId },
+                        businessId: command.businessId
+                    });
                 }
-            }*/
+            }
         } else {
             throw new ConflictException({ success: false, command, error: result.error })
         }
@@ -41,10 +41,10 @@ export class CommandHandlerController {
         return { success: true, events };
     }
 
-    notifyReservationPrice = () => {
-        executeCamundaEngine({ roomType: 'King Suite', days: 1, isWeekend: false, availability: 5 })
-    }
-    /*async ({ payload: { roomType, checkInDate, checkOutDate, reservationId }, businessId }) =>
+    // notifyReservationPrice = () => {
+    //     executeCamundaEngine({ roomType: 'Junior Suite', days: 21, isWeekend: false, availability: 17 })
+    // }
+    notifyReservationPrice = async ({ payload: { roomType, checkInDate, checkOutDate, reservationId }, businessId }) =>
         this.handle({
             businessId,
             type: 'NotifyPrice',
@@ -52,5 +52,5 @@ export class CommandHandlerController {
                 reservationId,
                 calculatedPrice: await executeCamundaEngine({ roomType, checkInDate, checkOutDate })
             }
-        }).catch(error => console.error('Error notificando el precio', error));*/
+        }).catch(error => console.error('Error notificando el precio', error))
 }
